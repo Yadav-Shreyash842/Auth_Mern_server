@@ -7,7 +7,7 @@ const transporter = require ("../config/nodemailer")
 exports.register  = async (req , res) => {
        const { name , email , password } = req.body;
        if(!name || !email || !password){
-        return res.status(400).json({message : "Please enter all fields"})
+        return res.status(400).json({success: false, message : "Please enter all fields"})
        }
        try {
              // Normalize email to lowercase for case-insensitive comparison
@@ -69,7 +69,7 @@ exports.register  = async (req , res) => {
 exports.login = async (req , res ) => {
     const { email , password } = req.body;
     if(!email || !password){
-        return res.status(400).json({message : "Please enter all fields"})
+        return res.status(400).json({success: false, message : "Please enter all fields"})
     }
     try {
         // Normalize email to lowercase for case-insensitive comparison
@@ -77,13 +77,13 @@ exports.login = async (req , res ) => {
         const user = await User.findOne({email: normalizedEmail});
         if(!user){
             console.log("User not found with email:", email);
-            return res.status(400).json({message : "Invalid credentials - User not found"})
+            return res.status(400).json({success: false, message : "Invalid credentials - User not found"})
         }
         const isMatch = await bcrypt.compare(password , user.password); 
 
         if(!isMatch){
             console.log("Password mismatch for user:", email);
-            return res.status(400).json({message : "Invalid credentials - Wrong password"})
+            return res.status(400).json({success: false, message : "Invalid credentials - Wrong password"})
         }
 
         const token = jwt.sign({id: user._id}, process.env.JWT_SECRET, {expiresIn : '7d'});
@@ -126,7 +126,7 @@ exports.sendVerifyOtp = async (req , res) => {
         const userId = req.userId;
         const user = await User.findById(userId);
         if(user.isAccountVerified){
-            return res.status(400).json({message : "Account already verified"})
+            return res.status(400).json({success: false, message : "Account already verified"})
         }
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         user.verifyOtp = otp;
@@ -153,20 +153,20 @@ exports.verifyEmail = async (req , res) => {
     const userId = req.userId;
     const {otp} = req.body;
     if(!otp){
-        return res.status(400).json({message : "Please enter OTP"})
+        return res.status(400).json({success: false, message : "Please enter OTP"})
     }
 
     try {
         const user = await User.findById(userId);
         if(!user){
-            return res.status(400).json({message : "Invalid user"})
+            return res.status(400).json({success: false, message : "Invalid user"})
         }
         if(user.verifyOtp === '' || user.verifyOtp !== otp){
-            return res.status(400).json({message : "Invalid OTP"})
+            return res.status(400).json({success: false, message : "Invalid OTP"})
         }
 
         if(user.verifyOtpExpireAt < Date.now()){
-            return res.status(400).json({message : "OTP expired"})
+            return res.status(400).json({success: false, message : "OTP expired"})
         }
 
         user.isAccountVerified = true;
@@ -177,7 +177,7 @@ exports.verifyEmail = async (req , res) => {
         return res.json({success : true , message : "Email verified successfully"})
         
     } catch (error) {
-        res.json({success : false , message : " somethigs went wrong"})
+        res.status(500).json({success : false , message : "Something went wrong"})
         
     }
 };
@@ -196,14 +196,14 @@ exports.isAuthenticated = async (req, res) => {
 exports.sendResetOtp = async (req, res) => {
     const {email} = req.body;
     if(!email){
-        return res.status(400).json({message : "Please enter email"})
+        return res.status(400).json({success: false, message : "Please enter email"})
     }
     try {
         // Normalize email to lowercase for case-insensitive comparison
         const normalizedEmail = email.toLowerCase().trim();
         const user = await User.findOne({email: normalizedEmail});
         if(!user){
-            return res.status(400).json({message : "Invalid email"})
+            return res.status(400).json({success: false, message : "Invalid email"})
         }
 
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -231,20 +231,20 @@ exports.sendResetOtp = async (req, res) => {
 exports.resetPassword = async (req , res) => {
     const {email , otp , newPassword} = req.body;
     if(!email || !otp || !newPassword){
-        return res.status(400).json({message : "Please enter all fields"})
+        return res.status(400).json({success: false, message : "Please enter all fields"})
     }
     try {
         // Normalize email to lowercase for case-insensitive comparison
         const normalizedEmail = email.toLowerCase().trim();
         const user = await User.findOne({email: normalizedEmail})
         if(!user){
-            return res.status(400).json({message : "Invalid email"})
+            return res.status(400).json({success: false, message : "Invalid email"})
         }
         if(user.resetOtp === '' || user.resetOtp !== otp){
-            return res.status(400).json({message : "Invalid OTP"})
+            return res.status(400).json({success: false, message : "Invalid OTP"})
         }
         if(user.resetOtpExpireAt < Date.now()){
-            return res.status(400).json({message : "OTP expired"})
+            return res.status(400).json({success: false, message : "OTP expired"})
         }
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         user.password = hashedPassword;

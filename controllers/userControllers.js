@@ -5,7 +5,7 @@ exports.getUserData = async (req, res) => {
         const userId = req.userId;
         const user = await User.findById(userId);
         if(!user){
-            return res.status(400).json({message : "Invalid user"})
+            return res.status(400).json({success: false, message : "Invalid user"})
         }
        res.json({
         success : true,
