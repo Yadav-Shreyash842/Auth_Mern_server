@@ -11,7 +11,11 @@ const app = express();
 const port = process.env.PORT || 3000;
 connectDB();
 
-const allowedOrigins = ['http://localhost:5173']
+// Allow multiple origins - localhost for development and production URL
+const allowedOrigins = [
+    'http://localhost:5173',
+    process.env.CLIENT_URL // Your deployed client URL
+].filter(Boolean); // Remove undefined values
 
 app.use(express.json());
 app.use(cookieParser());
