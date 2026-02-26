@@ -3,12 +3,12 @@ const cors = require ("cors");
 const dotenv = require ("dotenv");
 dotenv.config();
 const cookieParser = require ("cookie-parser");
-const connectDB = require ("../server/config/db");
+const connectDB = require ("./config/db");
 const authRouter = require("./routes/authRoutes");
 const userRouter = require("./routes/userRoutes");
 
 const app = express();
-const port = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 connectDB();
 
 // Allow multiple origins - localhost for development and production URL
@@ -26,6 +26,6 @@ app.get("/", (req , res) => res.send("API working "))
 app.use('/api/auth', authRouter)
 app.use('/api/user', userRouter)
 
-app.listen(port , () => {
-    console.log(`Server is running on port http://localhost:${port}`);
+app.listen(PORT, () => {
+    console.log(`Server is running on port http://localhost:${PORT}`);
 })
