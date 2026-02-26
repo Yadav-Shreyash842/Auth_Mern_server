@@ -15,6 +15,6 @@ exports.getUserData = async (req, res) => {
         }
        })
     } catch(error){
-        res.json({success : false , message : " somethigs went wrong"})
+        res.json({success : false , message : "Something went wrong"})
     }
 } 

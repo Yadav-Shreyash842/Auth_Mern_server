@@ -2,7 +2,6 @@ const mongoose = require ("mongoose");
 const User = require ("../models/user")
 const bcrypt = require ("bcryptjs");
 const jwt = require ("jsonwebtoken");
-const cookie = require ("cookie-parser")
 const transporter = require ("../config/nodemailer")
 
 exports.register  = async (req , res) => {
@@ -145,7 +144,7 @@ exports.sendVerifyOtp = async (req , res) => {
         return res.json({success : true , message : "OTP sent to your email"})  
         
     } catch (error) {
-        res.json({success : false , message : " somethigs went wrong"})
+        res.json({success : false , message : "Something went wrong"})
     }
 
 };
@@ -190,7 +189,7 @@ exports.isAuthenticated = async (req, res) => {
         // const user = await User.findById(userId).select("-password -verifyOtp -verifyOtpExpireAt -resetOtp -resetOtpExpireAt");
     }
     catch (error) {
-        res.json({success : false , message : " somethigs went wrong"})
+        res.json({success : false , message : "Something went wrong"})
     }
 };
 
@@ -225,7 +224,7 @@ exports.sendResetOtp = async (req, res) => {
 
     }
     catch (error){
-        res.json({success : false , message : " somethigs went wrong"})
+        res.json({success : false , message : "Something went wrong"})
     }
 };
 
@@ -256,7 +255,7 @@ exports.resetPassword = async (req , res) => {
 
     }
     catch (error){
-        res.json({success : false , message : " somethigs went wrong"})
+        res.json({success : false , message : "Something went wrong"})
     }
 };
 
