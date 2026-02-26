@@ -11,15 +11,18 @@ exports.register  = async (req , res) => {
         return res.status(400).json({message : "Please enter all fields"})
        }
        try {
-             const userExits = await User.findOne({email})
+             // Normalize email to lowercase for case-insensitive comparison
+             const normalizedEmail = email.toLowerCase().trim();
+             
+             const userExits = await User.findOne({email: normalizedEmail})
              if(userExits){
-                return res.status(400).json({message : "User already exists"})
+                return res.status(400).json({success: false, message : "User already exists"})
              }
              const hashedPassword = await bcrypt.hash(password, 10);
 
              const user = new User ({
                 name,   
-                email,
+                email: normalizedEmail,
                 password : hashedPassword
              });
                 await user.save();
@@ -55,7 +58,11 @@ exports.register  = async (req , res) => {
 
         
        } catch (error) {
-        return res.json({success : false , message : error.message})
+        // Handle MongoDB duplicate key error
+        if (error.code === 11000) {
+            return res.status(400).json({success : false , message : "User already exists"})
+        }
+        return res.status(500).json({success : false , message : error.message})
        }
 
 }
@@ -66,7 +73,9 @@ exports.login = async (req , res ) => {
         return res.status(400).json({message : "Please enter all fields"})
     }
     try {
-        const user = await User.findOne({email});
+        // Normalize email to lowercase for case-insensitive comparison
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await User.findOne({email: normalizedEmail});
         if(!user){
             console.log("User not found with email:", email);
             return res.status(400).json({message : "Invalid credentials - User not found"})
@@ -191,7 +200,9 @@ exports.sendResetOtp = async (req, res) => {
         return res.status(400).json({message : "Please enter email"})
     }
     try {
-        const user = await User.findOne({email});
+        // Normalize email to lowercase for case-insensitive comparison
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await User.findOne({email: normalizedEmail});
         if(!user){
             return res.status(400).json({message : "Invalid email"})
         }
@@ -224,7 +235,9 @@ exports.resetPassword = async (req , res) => {
         return res.status(400).json({message : "Please enter all fields"})
     }
     try {
-        const user = await User.findOne({email})
+        // Normalize email to lowercase for case-insensitive comparison
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await User.findOne({email: normalizedEmail})
         if(!user){
             return res.status(400).json({message : "Invalid email"})
         }
