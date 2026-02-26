@@ -13,9 +13,12 @@ exports.register  = async (req , res) => {
              // Normalize email to lowercase for case-insensitive comparison
              const normalizedEmail = email.toLowerCase().trim();
              
+             console.log(`Registration attempt for email: ${normalizedEmail}`);
+             
              const userExits = await User.findOne({email: normalizedEmail})
              if(userExits){
-                return res.status(400).json({success: false, message : "User already exists"})
+                console.log(`Registration failed: User with email ${normalizedEmail} already exists`);
+                return res.status(400).json({success: false, message : "User already exists with this email"})
              }
              const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -47,19 +50,21 @@ exports.register  = async (req , res) => {
 
                 try {
                     await transporter.sendMail(mailOptions);
-                    console.log("Welcome email sent successfully");
+                    console.log(`Welcome email sent successfully to ${user.email}`);
                 } catch (emailError) {
                     console.error("Email sending failed:", emailError.message);
                 }
 
+                console.log(`User registered successfully: ${normalizedEmail}`);
                 return res.json({success : true});
 
 
         
        } catch (error) {
+        console.error('Registration error:', error);
         // Handle MongoDB duplicate key error
         if (error.code === 11000) {
-            return res.status(400).json({success : false , message : "User already exists"})
+            return res.status(400).json({success : false , message : "User already exists with this email"})
         }
         return res.status(500).json({success : false , message : error.message})
        }
