@@ -6,9 +6,26 @@ const transporter = require ("../config/nodemailer")
 
 exports.register  = async (req , res) => {
        const { name , email , password } = req.body;
+       
+       // Validate all fields
        if(!name || !email || !password){
+        console.log('[REGISTER] Missing fields:', { hasName: !!name, hasEmail: !!email, hasPassword: !!password });
         return res.status(400).json({success: false, message : "Please enter all fields"})
        }
+       
+       // Validate email format
+       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+       if (!emailRegex.test(email)) {
+           console.log('[REGISTER] Invalid email format:', email);
+           return res.status(400).json({success: false, message : "Please enter a valid email address"})
+       }
+       
+       // Validate password length
+       if (password.length < 6) {
+           console.log('[REGISTER] Password too short');
+           return res.status(400).json({success: false, message : "Password must be at least 6 characters long"})
+       }
+       
        try {
              // Normalize email to lowercase for case-insensitive comparison
              const normalizedEmail = email.toLowerCase().trim();
@@ -78,39 +95,46 @@ exports.register  = async (req , res) => {
 
 exports.login = async (req , res ) => {
     const { email , password } = req.body;
+    
+    // Validate input
     if(!email || !password){
+        console.log('[LOGIN] Missing fields:', { hasEmail: !!email, hasPassword: !!password });
         return res.status(400).json({success: false, message : "Please enter all fields"})
     }
+    
     try {
         // Normalize email to lowercase for case-insensitive comparison
         const normalizedEmail = email.toLowerCase().trim();
+        console.log(`[LOGIN] Login attempt for email: ${normalizedEmail}`);
+        
         const user = await User.findOne({email: normalizedEmail});
         if(!user){
-            console.log("User not found with email:", email);
-            return res.status(400).json({success: false, message : "Invalid credentials - User not found"})
+            console.log(`[LOGIN] User not found with email: ${normalizedEmail}`);
+            return res.status(400).json({success: false, message : "Invalid email or password"})
         }
+        
         const isMatch = await bcrypt.compare(password , user.password); 
 
         if(!isMatch){
-            console.log("Password mismatch for user:", email);
-            return res.status(400).json({success: false, message : "Invalid credentials - Wrong password"})
+            console.log(`[LOGIN] Password mismatch for user: ${normalizedEmail}`);
+            return res.status(400).json({success: false, message : "Invalid email or password"})
         }
 
         const token = jwt.sign({id: user._id}, process.env.JWT_SECRET, {expiresIn : '7d'});
-                res.cookie ("token", token , {
-                    httpOnly : true,
-                    secure : process.env.NODE_ENV === 'production',
-                    sameSite : process.env.NODE_ENV === "production" ? "none" : "strict",
-                    maxAge : 7 * 24 * 60 * 60 * 1000
+        res.cookie ("token", token , {
+            httpOnly : true,
+            secure : process.env.NODE_ENV === 'production',
+            sameSite : process.env.NODE_ENV === "production" ? "none" : "strict",
+            maxAge : 7 * 24 * 60 * 60 * 1000
+        });
 
-                });
-
-                return res.json({success : true});
-
-
+        console.log(`[LOGIN] Login successful for: ${normalizedEmail}`);
+        return res.json({success : true});
         
     } catch (error) {
-         return res.json({success : false , message : error.message})
+        console.error('[LOGIN] Login error:', error.message);
+        console.error('[LOGIN] Full error:', error);
+        return res.status(500).json({success : false , message : "Login failed. Please try again"})
     }
 };
 
