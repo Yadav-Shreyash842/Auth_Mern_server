@@ -327,28 +327,45 @@ exports.sendResetOtp = async (req, res) => {
 exports.resetPassword = async (req , res) => {
 
     const {email , otp , newPassword} = req.body;
+    
+    console.log('🔐 [RESET PASSWORD] Request received:', { email, otp, newPasswordLength: newPassword?.length });
 
     if(!email || !otp || !newPassword){
+        console.log('❌ [RESET PASSWORD] Missing fields');
         return res.status(400).json({success: false, message : "Please enter all fields"})
     }
 
     try {
 
         const normalizedEmail = email.toLowerCase().trim();
+        const normalizedOtp = otp.toString().trim();
+        
+        console.log('🔍 [RESET PASSWORD] Looking up user:', normalizedEmail);
 
         const user = await User.findOne({email: normalizedEmail})
 
         if(!user){
+            console.log('❌ [RESET PASSWORD] User not found');
             return res.status(400).json({success: false, message : "Invalid email"})
         }
+        
+        console.log('👤 [RESET PASSWORD] User found:', user.email);
+        console.log('🔢 [RESET PASSWORD] Stored OTP:', user.resetOtp);
+        console.log('🔢 [RESET PASSWORD] Received OTP:', normalizedOtp);
+        console.log('⏰ [RESET PASSWORD] OTP expires at:', new Date(user.resetOtpExpireAt));
+        console.log('⏰ [RESET PASSWORD] Current time:', new Date());
 
-        if(user.resetOtp === '' || user.resetOtp !== otp){
+        if(user.resetOtp === '' || user.resetOtp !== normalizedOtp){
+            console.log('❌ [RESET PASSWORD] OTP mismatch!');
             return res.status(400).json({success: false, message : "Invalid OTP"})
         }
 
         if(user.resetOtpExpireAt < Date.now()){
+            console.log('❌ [RESET PASSWORD] OTP expired');
             return res.status(400).json({success: false, message : "OTP expired"})
         }
+        
+        console.log('✅ [RESET PASSWORD] OTP verified, updating password');
 
         const hashedPassword = await bcrypt.hash(newPassword, 10);
 
@@ -359,13 +376,15 @@ exports.resetPassword = async (req , res) => {
         user.resetOtpExpireAt = 0;
 
         await user.save();
+        
+        console.log('✅ [RESET PASSWORD] Password updated successfully');
 
         return res.json({success : true , message : "Password reset successfully"})
 
     }
 
     catch (error){
-
+        console.error('❌ [RESET PASSWORD] Error:', error.message);
         res.json({success : false , message : "Something went wrong"})
 
     }
