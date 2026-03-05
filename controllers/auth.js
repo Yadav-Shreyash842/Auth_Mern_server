@@ -2,6 +2,7 @@ const User = require ("../models/user")
 const bcrypt = require ("bcryptjs");
 const jwt = require ("jsonwebtoken");
 const transporter = require ("../config/nodemailer")
+const { getWelcomeEmail, getVerificationOtpEmail, getPasswordResetOtpEmail } = require("../utils/emailTemplates")
 
 exports.register  = async (req , res) => {
        const { name , email , password } = req.body;
@@ -47,11 +48,11 @@ exports.register  = async (req , res) => {
              
              console.log('🍪 [REGISTER] Token cookie set');
 
+             const emailTemplate = getWelcomeEmail(user.name);
              const mailOptions = {
                  from : process.env.EMAIL_USER,
                  to : user.email,
-                 subject : "Welcome to MERN_AUTH",
-                 text : `Hi ${user.name}, welcome to our app`
+                 ...emailTemplate
              };
 
              try {
@@ -173,11 +174,11 @@ exports.sendVerifyOtp = async (req , res) => {
         await user.save();
         console.log('💾 [VERIFY OTP] OTP saved to database');
 
+        const emailTemplate = getVerificationOtpEmail(otp);
         const mailOptions = {
             from : process.env.EMAIL_USER,
             to : user.email,
-            subject : "Account Verification OTP",
-            text : `Your OTP is ${otp}`
+            ...emailTemplate
         };
         
         console.log('📧 [VERIFY OTP] Sending email to:', user.email);
@@ -299,11 +300,11 @@ exports.sendResetOtp = async (req, res) => {
         await user.save();
         console.log('💾 [RESET OTP] OTP saved to database');
 
+        const emailTemplate = getPasswordResetOtpEmail(otp);
         const mailOptions = {
             from : process.env.EMAIL_USER,
             to : user.email,
-            subject : "Password Reset OTP",
-            text : `Your OTP is ${otp}`
+            ...emailTemplate
         };
         
         console.log('📧 [RESET OTP] Sending email to:', user.email);
