@@ -1,4 +1,3 @@
-const { verify } = require("jsonwebtoken");
 const mongoose = require ("mongoose");
 
 const userSchema = new mongoose.Schema({
@@ -31,15 +30,12 @@ const userSchema = new mongoose.Schema({
     },
     resetOtp : {
         type : String,
-        default: false
+        default: ''
     },
     resetOtpExpireAt : {
         type : Number,
         default : 0
     },
-    
-
 });
 
 module.exports = mongoose.model("User", userSchema);
-

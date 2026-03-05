@@ -1,4 +1,3 @@
-const mongoose = require ("mongoose");
 const User = require ("../models/user")
 const bcrypt = require ("bcryptjs");
 const jwt = require ("jsonwebtoken");
@@ -7,39 +6,24 @@ const transporter = require ("../config/nodemailer")
 exports.register  = async (req , res) => {
        const { name , email , password } = req.body;
        
-       // Validate all fields
+       console.log('📝 [REGISTER] Registration attempt:', { name, email });
+       
        if(!name || !email || !password){
-        console.log('[REGISTER] Missing fields:', { hasName: !!name, hasEmail: !!email, hasPassword: !!password });
+        console.log('❌ [REGISTER] Missing fields');
         return res.status(400).json({success: false, message : "Please enter all fields"})
        }
-       
-       // Validate email format
-       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-       if (!emailRegex.test(email)) {
-           console.log('[REGISTER] Invalid email format:', email);
-           return res.status(400).json({success: false, message : "Please enter a valid email address"})
-       }
-       
-       // Validate password length
-       if (password.length < 6) {
-           console.log('[REGISTER] Password too short');
-           return res.status(400).json({success: false, message : "Password must be at least 6 characters long"})
-       }
-       
        try {
-             // Normalize email to lowercase for case-insensitive comparison
+
              const normalizedEmail = email.toLowerCase().trim();
-             
-             console.log(`[REGISTER] Registration attempt for email: ${normalizedEmail}`);
-             
-             // Check if user already exists
+             console.log('🔍 [REGISTER] Checking for existing user:', normalizedEmail);
+
              const userExists = await User.findOne({email: normalizedEmail})
              if(userExists){
-                console.log(`[REGISTER] Registration failed: User with email ${normalizedEmail} already exists`);
+                console.log('⚠️ [REGISTER] User already exists:', normalizedEmail);
                 return res.status(400).json({success: false, message : "User already exists with this email"})
              }
              
-             console.log(`[REGISTER] Creating new user: ${normalizedEmail}`);
+             console.log('🔐 [REGISTER] Hashing password...');
              const hashedPassword = await bcrypt.hash(password, 10);
 
              const user = new User ({
@@ -47,8 +31,10 @@ exports.register  = async (req , res) => {
                 email: normalizedEmail,
                 password : hashedPassword
              });
+             
+             console.log('💾 [REGISTER] Saving user to database...');
              await user.save();
-             console.log(`[REGISTER] User saved successfully: ${normalizedEmail}, ID: ${user._id}`);
+             console.log('✅ [REGISTER] User saved successfully:', user._id);
 
              const token = jwt.sign({id: user._id}, process.env.JWT_SECRET, {expiresIn : '7d'});
 
@@ -58,69 +44,65 @@ exports.register  = async (req , res) => {
                  sameSite : process.env.NODE_ENV === "production" ? "none" : "strict",
                  maxAge : 7 * 24 * 60 * 60 * 1000
              });
-         
-             // Send welcome email (don't block registration if email fails)
+             
+             console.log('🍪 [REGISTER] Token cookie set');
+
              const mailOptions = {
                  from : process.env.EMAIL_USER,
                  to : user.email,
                  subject : "Welcome to MERN_AUTH",
-                 text : `Hi ${user.name},\n\nThank you for registering on our app! We're excited to have you on board.\n\nBest regards,\nThe Team`
+                 text : `Hi ${user.name}, welcome to our app`
              };
 
              try {
+                 console.log('📧 [REGISTER] Sending welcome email to:', user.email);
                  const info = await transporter.sendMail(mailOptions);
-                 console.log(`[REGISTER] Welcome email sent successfully to ${user.email}. Message ID:`, info.messageId);
+                 console.log('✅ [REGISTER] Welcome email sent. Message ID:', info.messageId);
              } catch (emailError) {
-                 console.error("[REGISTER] Email sending failed:", emailError.message);
-                 console.error("[REGISTER] Email error details:", emailError);
+                 console.error('⚠️ [REGISTER] Email failed (non-critical):', emailError.message);
              }
-
-             console.log(`[REGISTER] Registration completed successfully: ${normalizedEmail}`);
+             
+             console.log('🎉 [REGISTER] Registration complete!');
              return res.json({success : true});
 
-        
        } catch (error) {
-        console.error('[REGISTER] Registration error:', error.message);
-        console.error('[REGISTER] Error code:', error.code);
-        console.error('[REGISTER] Full error:', error);
+        console.error('❌ [REGISTER] Error:', error.message);
+        console.error('Error code:', error.code);
         
-        // Handle MongoDB duplicate key error
         if (error.code === 11000) {
             return res.status(400).json({success : false , message : "Email already registered"})
         }
-        return res.status(500).json({success : false , message : "Something went wrong. Please try again"})
-       }
 
+        return res.status(500).json({success : false , message : "Something went wrong"})
+       }
 }
 
 exports.login = async (req , res ) => {
+
     const { email , password } = req.body;
-    
-    // Validate input
+
     if(!email || !password){
-        console.log('[LOGIN] Missing fields:', { hasEmail: !!email, hasPassword: !!password });
         return res.status(400).json({success: false, message : "Please enter all fields"})
     }
-    
+
     try {
-        // Normalize email to lowercase for case-insensitive comparison
+
         const normalizedEmail = email.toLowerCase().trim();
-        console.log(`[LOGIN] Login attempt for email: ${normalizedEmail}`);
-        
+
         const user = await User.findOne({email: normalizedEmail});
+
         if(!user){
-            console.log(`[LOGIN] User not found with email: ${normalizedEmail}`);
-            return res.status(400).json({success: false, message : "Invalid email or password"})
+            return res.status(400).json({success: false, message : "Invalid credentials"})
         }
-        
+
         const isMatch = await bcrypt.compare(password , user.password); 
 
         if(!isMatch){
-            console.log(`[LOGIN] Password mismatch for user: ${normalizedEmail}`);
-            return res.status(400).json({success: false, message : "Invalid email or password"})
+            return res.status(400).json({success: false, message : "Invalid credentials"})
         }
 
         const token = jwt.sign({id: user._id}, process.env.JWT_SECRET, {expiresIn : '7d'});
+
         res.cookie ("token", token , {
             httpOnly : true,
             secure : process.env.NODE_ENV === 'production',
@@ -128,191 +110,264 @@ exports.login = async (req , res ) => {
             maxAge : 7 * 24 * 60 * 60 * 1000
         });
 
-        console.log(`[LOGIN] Login successful for: ${normalizedEmail}`);
         return res.json({success : true});
-        
+
     } catch (error) {
-        console.error('[LOGIN] Login error:', error.message);
-        console.error('[LOGIN] Full error:', error);
-        return res.status(500).json({success : false , message : "Login failed. Please try again"})
+
+         return res.json({success : false , message : error.message})
+
     }
 };
 
 
 exports.logout = async (req , res) => {
-    try{
-        res.clearCookie("token", {
-                httpOnly : true,
-                secure : process.env.NODE_ENV === 'production',
-                sameSite : process.env.NODE_ENV === "production" ? "none" : "strict",
-          })
 
-          return res.json({success : true , message : "Logged out successfully"})
-} 
-catch (error) {
-    return res.json({success : false , message : error.message})
-}
+    try{
+
+        res.clearCookie("token", {
+            httpOnly : true,
+            secure : process.env.NODE_ENV === 'production',
+            sameSite : process.env.NODE_ENV === "production" ? "none" : "strict",
+        })
+
+        return res.json({success : true , message : "Logged out successfully"})
+
+    } 
+    catch (error) {
+
+        return res.json({success : false , message : error.message})
+
+    }
 
 };
 
+
 exports.sendVerifyOtp = async (req , res) => {
+
     try {
+
         const userId = req.userId;
-        console.log('[VERIFY OTP] Sending OTP for user:', userId);
-        
+        console.log('📧 [VERIFY OTP] Request from user ID:', userId);
+
         const user = await User.findById(userId);
+
         if(!user){
-            console.log('[VERIFY OTP] User not found:', userId);
+            console.log('❌ [VERIFY OTP] User not found:', userId);
             return res.status(400).json({success: false, message : "User not found"})
         }
         
+        console.log('👤 [VERIFY OTP] User found:', user.email);
+
         if(user.isAccountVerified){
-            console.log('[VERIFY OTP] Account already verified:', user.email);
+            console.log('⚠️ [VERIFY OTP] Account already verified:', user.email);
             return res.status(400).json({success: false, message : "Account already verified"})
         }
-        
+
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        console.log('🔢 [VERIFY OTP] Generated OTP:', otp, 'for', user.email);
+
         user.verifyOtp = otp;
+
         user.verifyOtpExpireAt = Date.now() + 10 * 60 * 1000;
+
         await user.save();
-        console.log('[VERIFY OTP] OTP saved for user:', user.email);
-        
+        console.log('💾 [VERIFY OTP] OTP saved to database');
+
         const mailOptions = {
             from : process.env.EMAIL_USER,
             to : user.email,
             subject : "Account Verification OTP",
-            text : `Hi ${user.name},\n\nYour OTP for account verification is: ${otp}. It will expire in 10 minutes.\n\nBest regards,\nThe Team`
+            text : `Your OTP is ${otp}`
         };
-
-        console.log('[VERIFY OTP] Sending email to:', user.email);
+        
+        console.log('📧 [VERIFY OTP] Sending email to:', user.email);
         const info = await transporter.sendMail(mailOptions);
-        console.log('[VERIFY OTP] Email sent successfully. Message ID:', info.messageId);
-        
-        return res.json({success : true , message : "OTP sent to your email"})  
-        
+        console.log('✅ [VERIFY OTP] Email sent successfully! Message ID:', info.messageId);
+
+        return res.json({success : true , message : "OTP sent to email"})  
+
     } catch (error) {
-        console.error('[VERIFY OTP] Error:', error.message);
-        console.error('[VERIFY OTP] Full error:', error);
-        res.status(500).json({success : false , message : "Failed to send OTP. Please try again"})
+        console.error('❌ [VERIFY OTP] Error:', error.message);
+        console.error('Full error:', error);
+        res.status(500).json({success : false , message : "Failed to send OTP"})
+
     }
 
 };
 
+
 exports.verifyEmail = async (req , res) => {
+
     const userId = req.userId;
+
     const {otp} = req.body;
+    
+    console.log('✅ [VERIFY EMAIL] Verification attempt for user:', userId, 'with OTP:', otp);
+
     if(!otp){
+        console.log('❌ [VERIFY EMAIL] No OTP provided');
         return res.status(400).json({success: false, message : "Please enter OTP"})
     }
 
     try {
+
         const user = await User.findById(userId);
+
         if(!user){
+            console.log('❌ [VERIFY EMAIL] User not found:', userId);
             return res.status(400).json({success: false, message : "Invalid user"})
         }
+        
+        console.log('👤 [VERIFY EMAIL] User found:', user.email, 'Stored OTP:', user.verifyOtp);
+
         if(user.verifyOtp === '' || user.verifyOtp !== otp){
+            console.log('❌ [VERIFY EMAIL] Invalid OTP. Expected:', user.verifyOtp, 'Received:', otp);
             return res.status(400).json({success: false, message : "Invalid OTP"})
         }
 
         if(user.verifyOtpExpireAt < Date.now()){
+            console.log('❌ [VERIFY EMAIL] OTP expired');
             return res.status(400).json({success: false, message : "OTP expired"})
         }
 
         user.isAccountVerified = true;
+
         user.verifyOtp = '';
+
         user.verifyOtpExpireAt = 0;
 
         await user.save();
+        
+        console.log('🎉 [VERIFY EMAIL] Email verified successfully for:', user.email);
+
         return res.json({success : true , message : "Email verified successfully"})
-        
+
     } catch (error) {
+        console.error('❌ [VERIFY EMAIL] Error:', error.message);
         res.status(500).json({success : false , message : "Something went wrong"})
-        
+
     }
 };
+
 
 exports.isAuthenticated = async (req, res) => {
+
     try {
-          return res.json({success: true});
-        // const userId = req.userId;
-        // const user = await User.findById(userId).select("-password -verifyOtp -verifyOtpExpireAt -resetOtp -resetOtpExpireAt");
+
+        return res.json({success: true});
+
     }
+
     catch (error) {
+
         res.json({success : false , message : "Something went wrong"})
+
     }
+
 };
 
+
 exports.sendResetOtp = async (req, res) => {
+
     const {email} = req.body;
+
     if(!email){
         return res.status(400).json({success: false, message : "Please enter email"})
     }
+
     try {
-        // Normalize email to lowercase for case-insensitive comparison
+
         const normalizedEmail = email.toLowerCase().trim();
-        console.log('[RESET OTP] Sending password reset OTP to:', normalizedEmail);
-        
+        console.log('🔑 [RESET OTP] Password reset request for:', normalizedEmail);
+
         const user = await User.findOne({email: normalizedEmail});
+
         if(!user){
-            console.log('[RESET OTP] User not found:', normalizedEmail);
+            console.log('❌ [RESET OTP] User not found:', normalizedEmail);
             return res.status(400).json({success: false, message : "Email not registered"})
         }
+        
+        console.log('👤 [RESET OTP] User found:', user.email);
 
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        console.log('🔢 [RESET OTP] Generated OTP:', otp);
+
         user.resetOtp = otp;
+
         user.resetOtpExpireAt = Date.now() + 10 * 60 * 1000;
+
         await user.save();
-        console.log('[RESET OTP] OTP saved for user:', user.email);
+        console.log('💾 [RESET OTP] OTP saved to database');
 
         const mailOptions = {
             from : process.env.EMAIL_USER,
             to : user.email,
             subject : "Password Reset OTP",
-            text : `Hi ${user.name},\n\nYour OTP for password reset is: ${otp}. It will expire in 10 minutes.\n\nBest regards,\nThe Team`
+            text : `Your OTP is ${otp}`
         };
         
-        console.log('[RESET OTP] Sending email to:', user.email);
+        console.log('📧 [RESET OTP] Sending email to:', user.email);
         const info = await transporter.sendMail(mailOptions);
-        console.log('[RESET OTP] Email sent successfully. Message ID:', info.messageId);
-        
-        return res.json({success : true , message : "OTP sent to your email"})
+        console.log('✅ [RESET OTP] Email sent successfully! Message ID:', info.messageId);
+
+        return res.json({success : true , message : "OTP sent to email"})
 
     }
+
     catch (error){
-        console.error('[RESET OTP] Error:', error.message);
-        console.error('[RESET OTP] Full error:', error);
-        res.status(500).json({success : false , message : "Failed to send OTP. Please try again"})
+        console.error('❌ [RESET OTP] Error:', error.message);
+        console.error('Full error:', error);
+        res.status(500).json({success : false , message : "Failed to send OTP"})
+
     }
+
 };
 
+
 exports.resetPassword = async (req , res) => {
+
     const {email , otp , newPassword} = req.body;
+
     if(!email || !otp || !newPassword){
         return res.status(400).json({success: false, message : "Please enter all fields"})
     }
+
     try {
-        // Normalize email to lowercase for case-insensitive comparison
+
         const normalizedEmail = email.toLowerCase().trim();
+
         const user = await User.findOne({email: normalizedEmail})
+
         if(!user){
             return res.status(400).json({success: false, message : "Invalid email"})
         }
+
         if(user.resetOtp === '' || user.resetOtp !== otp){
             return res.status(400).json({success: false, message : "Invalid OTP"})
         }
+
         if(user.resetOtpExpireAt < Date.now()){
             return res.status(400).json({success: false, message : "OTP expired"})
         }
+
         const hashedPassword = await bcrypt.hash(newPassword, 10);
+
         user.password = hashedPassword;
+
         user.resetOtp = '';
+
         user.resetOtpExpireAt = 0;
+
         await user.save();
+
         return res.json({success : true , message : "Password reset successfully"})
 
     }
-    catch (error){
-        res.json({success : false , message : "Something went wrong"})
-    }
-};
 
+    catch (error){
+
+        res.json({success : false , message : "Something went wrong"})
+
+    }
+
+};

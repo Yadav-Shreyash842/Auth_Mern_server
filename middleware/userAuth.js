@@ -3,24 +3,23 @@ const jwt = require ("jsonwebtoken");
 const userAuth = (req, res, next) => {
     const token = req.cookies.token;
     if(!token){
-        return res.status(401).json({success: false, message : "Not authenticated", isAuthenticated: false})
+        return res.status(401).json({message : "Unauthorized"})
     }
     try {
         const decoded = jwt.verify(token , process.env.JWT_SECRET);
         if(decoded.id){
             req.userId = decoded.id;
         } else{
-            return res.status(401).json({success: false, message : "Invalid token", isAuthenticated: false})
+            return res.status(401).json({message : "Unauthorized"})
         }
 
         next();
 
     }
     catch (error){
-        console.log('[AUTH] Token verification failed:', error.message);
-        return res.status(401).json({success: false, message : "Token expired or invalid", isAuthenticated: false})
+        return res.status(401).json({message : "Unauthorized"})
     }
     
 }
 
-module.exports = userAuth;  
+module.exports = userAuth;
