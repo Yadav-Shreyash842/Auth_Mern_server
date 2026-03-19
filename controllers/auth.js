@@ -7,24 +7,18 @@ const { getWelcomeEmail, getVerificationOtpEmail, getPasswordResetOtpEmail } = r
 exports.register  = async (req , res) => {
        const { name , email , password } = req.body;
        
-       console.log('📝 [REGISTER] Registration attempt:', { name, email });
-       
        if(!name || !email || !password){
-        console.log('❌ [REGISTER] Missing fields');
         return res.status(400).json({success: false, message : "Please enter all fields"})
        }
        try {
 
              const normalizedEmail = email.toLowerCase().trim();
-             console.log('🔍 [REGISTER] Checking for existing user:', normalizedEmail);
 
              const userExists = await User.findOne({email: normalizedEmail})
              if(userExists){
-                console.log('⚠️ [REGISTER] User already exists:', normalizedEmail);
                 return res.status(400).json({success: false, message : "User already exists with this email"})
              }
              
-             console.log('🔐 [REGISTER] Hashing password...');
              const hashedPassword = await bcrypt.hash(password, 10);
 
              const user = new User ({
@@ -33,9 +27,7 @@ exports.register  = async (req , res) => {
                 password : hashedPassword
              });
              
-             console.log('💾 [REGISTER] Saving user to database...');
              await user.save();
-             console.log('✅ [REGISTER] User saved successfully:', user._id);
 
              const token = jwt.sign({id: user._id}, process.env.JWT_SECRET, {expiresIn : '7d'});
 
@@ -45,8 +37,6 @@ exports.register  = async (req , res) => {
                  sameSite : process.env.NODE_ENV === "production" ? "none" : "strict",
                  maxAge : 7 * 24 * 60 * 60 * 1000
              });
-             
-             console.log('🍪 [REGISTER] Token cookie set');
 
              const emailTemplate = getWelcomeEmail(user.name);
              const mailOptions = {
@@ -56,14 +46,11 @@ exports.register  = async (req , res) => {
              };
 
              try {
-                 console.log('📧 [REGISTER] Sending welcome email to:', user.email);
-                 const info = await transporter.sendMail(mailOptions);
-                 console.log('✅ [REGISTER] Welcome email sent. Message ID:', info.messageId);
+                 await transporter.sendMail(mailOptions);
              } catch (emailError) {
-                 console.error('⚠️ [REGISTER] Email failed (non-critical):', emailError.message);
+                 // Email sending failed but registration succeeded
              }
              
-             console.log('🎉 [REGISTER] Registration complete!');
              return res.json({success : true});
 
        } catch (error) {

@@ -23,10 +23,6 @@ const allowedOrigins = [
 
 console.log('🌐 [CORS] Allowed origins:', allowedOrigins);
 
-app.use(express.json());
-
-app.use(cookieParser());
-
 app.use(cors({
     origin: function (origin, callback) {
         // Allow requests with no origin (mobile apps, Postman, etc.)
@@ -43,6 +39,9 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+app.use(express.json());
+app.use(cookieParser());
 
 app.get("/", (req , res) => res.send("API working "))
 
