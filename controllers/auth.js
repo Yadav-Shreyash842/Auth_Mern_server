@@ -169,15 +169,13 @@ exports.sendVerifyOtp = async (req , res) => {
         };
         
         console.log('📧 [VERIFY OTP] Sending email to:', user.email);
-        const info = await transporter.sendMail(mailOptions);
-        console.log('✅ [VERIFY OTP] Email sent successfully! Message ID:', info.messageId);
+        await transporter.sendMail(mailOptions);
 
         return res.json({success : true , message : "OTP sent to email"})  
 
     } catch (error) {
         console.error('❌ [VERIFY OTP] Error:', error.message);
-        console.error('Full error:', error);
-        res.status(500).json({success : false , message : "Failed to send OTP"})
+        return res.status(500).json({success : false , message : "Failed to send OTP email. Please check email configuration."})
 
     }
 
@@ -295,8 +293,7 @@ exports.sendResetOtp = async (req, res) => {
         };
         
         console.log('📧 [RESET OTP] Sending email to:', user.email);
-        const info = await transporter.sendMail(mailOptions);
-        console.log('✅ [RESET OTP] Email sent successfully! Message ID:', info.messageId);
+        await transporter.sendMail(mailOptions);
 
         return res.json({success : true , message : "OTP sent to email"})
 
@@ -304,8 +301,7 @@ exports.sendResetOtp = async (req, res) => {
 
     catch (error){
         console.error('❌ [RESET OTP] Error:', error.message);
-        console.error('Full error:', error);
-        res.status(500).json({success : false , message : "Failed to send OTP"})
+        return res.status(500).json({success : false , message : "Failed to send OTP email. Please check email configuration."})
 
     }
 
